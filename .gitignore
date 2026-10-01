@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+
+# Satellite imagery and derived rasters are large and not reproducible from
+# this repo alone (they come from NOAA/EOG, Copernicus, Planetary Computer) --
+# never commit them.
+data/
+*.tif

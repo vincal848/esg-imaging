@@ -1,0 +1,4 @@
+facility,company,sector,lat,lon,facility_type,source,notes
+Example Flaring Site A,Fictional Oil Co,oil_gas,29.75,-95.37,oil_gas,FICTIONAL - for testing only,Made-up site near Houston TX for unit tests
+Example Mine Site B,Fictional Minerals Corp,metals_mining,-23.55,-46.63,mine,FICTIONAL - for testing only,Made-up site near Sao Paulo BR for unit tests
+Example Paper Mill C,Fictional Forest Products Inc,paper_pulp,45.50,-73.57,paper_mill,FICTIONAL - for testing only,Made-up site near Montreal CA for unit tests
