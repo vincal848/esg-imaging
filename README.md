@@ -1,6 +1,6 @@
 # Satellite-Imagery ESG Signal
 
-[![tests](https://github.com/vincal848/esg_imaging/actions/workflows/tests.yml/badge.svg)](https://github.com/vincal848/esg_imaging/actions/workflows/tests.yml)
+[![tests](https://github.com/vincal848/esg-imaging/actions/workflows/tests.yml/badge.svg)](https://github.com/vincal848/esg-imaging/actions/workflows/tests.yml)
 
 This project asks whether you can measure what a company is actually doing at
 its physical facilities from free satellite data, and whether that measurement
