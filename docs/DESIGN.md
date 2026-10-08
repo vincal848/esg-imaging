@@ -16,11 +16,11 @@ flowchart LR
     BL --> CH[imagery.ndvi_change<br/>loss mask + area_ha]
     VIIRS[VIIRS Nightfire<br/>flaring detections] --> B
     B --> CH
-    CH --> AGG[signal.aggregate_facility_signals<br/>facility -> company-period]
+    CH --> AGG[esg_signal.aggregate_facility_signals<br/>facility -> company-period]
     AGG --> EV[event study / panel regression<br/>M5, not yet built]
 ```
 
-Everything left of `signal.aggregate_facility_signals` operates on one
+Everything left of `esg_esg_signal.aggregate_facility_signals` operates on one
 facility at a time; everything right of it operates on a panel of
 company-periods. That boundary is also the `requirements-geo.txt` boundary --
 nothing past "pull the pixels for this buffer" needs a geo library, and

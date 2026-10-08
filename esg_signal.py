@@ -21,6 +21,8 @@ def aggregate_facility_signals(records, group_keys=("company", "period"),
     `{"value": weighted mean, "weight_sum": sum of raw weights,
     "n_facilities": count of records in the group}`.
 
+    `weight_key=None` means equal weights (every record weighs 1).
+
     Raises ValueError if a group's weights sum to zero or less -- a weighted
     mean is undefined there, and returning nan silently would make a company
     with no usable facility data look identical to one with a genuinely flat
@@ -33,7 +35,8 @@ def aggregate_facility_signals(records, group_keys=("company", "period"),
 
     out = {}
     for key, group_records in groups.items():
-        weights = np.array([r[weight_key] for r in group_records], dtype=float)
+        weights = np.array([1.0 if weight_key is None else r[weight_key]
+                            for r in group_records], dtype=float)
         values = np.array([r[value_key] for r in group_records], dtype=float)
 
         weight_sum = float(np.sum(weights))

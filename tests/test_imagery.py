@@ -134,3 +134,27 @@ def test_seasonal_baseline_raises_when_no_images_are_in_window():
     doy = np.array([1])
     with pytest.raises(ValueError):
         imagery.seasonal_baseline(stack, doy, target_doy=180, window=5)
+
+
+def test_buffer_loss_ha_counts_only_cleared_pixels_inside_the_buffer():
+    # Four dates; baseline target doy 100 uses the first three (all NDVI 0.8).
+    stack = np.full((4, 20, 20), 0.8)
+    doy = np.array([95, 100, 105, 300])
+    stack[3, 5:15, 5:15] = 0.2  # 10x10 clearing on the "current" date
+    buffer_mask = np.zeros((20, 20), dtype=bool)
+    buffer_mask[:, :10] = True  # buffer covers half of the clearing (50 px)
+
+    area_ha = imagery.buffer_loss_ha(stack, doy, current=3, target_doy=100,
+                                     buffer_mask=buffer_mask, threshold=0.3,
+                                     pixel_size_m=10.0, window=15)
+    assert area_ha == pytest.approx(0.5)
+
+
+def test_buffer_loss_ha_ignores_pixels_masked_as_cloud_on_the_current_date():
+    stack = np.full((2, 4, 4), 0.8)
+    doy = np.array([100, 300])
+    stack[1] = np.nan  # fully clouded current scene: no comparison possible
+    area_ha = imagery.buffer_loss_ha(stack, doy, current=1, target_doy=100,
+                                     buffer_mask=np.ones((4, 4), dtype=bool),
+                                     threshold=0.3, pixel_size_m=10.0)
+    assert area_ha == pytest.approx(0.0)

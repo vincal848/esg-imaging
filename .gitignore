@@ -9,3 +9,6 @@ venv/
 # never commit them.
 data/
 *.tif
+
+# local credentials (see README: Data you need to obtain)
+.env

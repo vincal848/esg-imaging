@@ -90,7 +90,7 @@ them" is itself informative.
    summed instead of thresholded, since they're already discrete
    detections rather than a continuous field.
 5. **Aggregation.** Per-facility signals are combined to a company-period
-   observation with a weighted mean (`signal.aggregate_facility_signals`),
+   observation with a weighted mean (`esg_esg_signal.aggregate_facility_signals`),
    weighted by something that approximates facility importance (production
    capacity or acreage, once that data is attached -- equal weights for now).
 6. **Event study / panel regression.** Not built yet (M5). The plan is a
@@ -101,17 +101,23 @@ them" is itself informative.
 ## Milestones
 
 - [x] **M1 -- imagery primitives on arrays.** NDVI, cloud masking, seasonal
-      baselines and change detection, tested on synthetic rasters. No
-      downloads. *This scaffold.*
-- [ ] **M2 -- facility table for one sector.** A real (not fictional)
-      facility list for one sector, sourced and matched to tickers, with
-      documented coverage gaps.
-- [ ] **M3 -- flaring signal for ~50 oil & gas firms.** VIIRS Nightfire pulled
-      and aggregated to company-quarter flaring intensity.
-- [ ] **M4 -- deforestation signal.** Sentinel-2 or Hansen GFC forest loss
-      aggregated to company-quarter for agriculture/mining/paper firms.
-- [ ] **M5 -- event study.** Lead/lag test of M3/M4 signals against rating
-      changes and returns; report the result whichever way it comes out.
+      baselines, change detection, buffer-level loss (`imagery.buffer_loss_ha`),
+      flare sums in a buffer, equal-weight aggregation; tested on synthetic
+      rasters. No downloads.
+- [x] **M2 -- facility table (US, keyless).** EPA GHGRP facilities and parents
+      matched to tickers: 28.1% of in-scope facilities (`epa.py`, `matching.py`).
+      Global trackers still need a form.
+- [~] **M3 -- flaring signal for ~50 oil & gas firms.** Code done:
+      Nightfire CSV parsing, buffer sums, intensity (`flaring.py`). Blocked on
+      an EOG account and on a production denominator (open question).
+- [~] **M4 -- deforestation signal.** Code done: Hansen tile naming/URLs,
+      windowed read, excess loss vs a surrounding ring (`forest.py`), Sentinel-2
+      search parameters (`sentinel.py`). Run on real tiles for 206 US facilities (H2-keyless).
+- [~] **M5 -- event study.** Code done and validated on synthetic data:
+      two-way fixed-effects lead/lag test with company-clustered errors,
+      shuffled placebo, market-model CAR (`evaluate.py`). One real result, null
+      (H2-keyless, against EPA enforcement); ratings (`ratings.py`) and flaring
+      are still missing.
 
 ## Success metrics
 
@@ -128,7 +134,105 @@ them" is itself informative.
 
 ## Status
 
-Scaffold. M1 in progress.
+M1 complete. One real-data run exists: **H2-keyless**, a forest-loss test against
+EPA enforcement (not ratings, not returns). It is null. Protocol, written before the
+run: `docs/PROTOCOL-H2-keyless.md`. Reproduce: `python fetch_data.py` (about 1 GB
+into the gitignored `data/raw`), then `python run_h2.py`.
+
+**What was tested.** Does excess Hansen forest loss (2 km around a GHGRP facility minus
+the 2-10 km ring) in year t-1 lead the number of EPA federal civil enforcement
+settlements at the company's facilities in year t? Two-way fixed effects, errors
+clustered by company, periods 2011-2024 (split fixed in advance), run once.
+
+| | beta (enforcement per ha) | se | t | p | n obs |
+|---|---|---|---|---|---|
+| signal -> enforcement, lag 1 | -0.00065 | 0.00071 | -0.91 | 0.365 | 507 |
+| shuffled-signal placebo | -0.00011 | 0.00033 | -0.33 | 0.745 | 507 |
+
+No edge: the sign is wrong and the effect is indistinguishable from zero; the placebo
+is null as required. Power is low (39 companies, 64 facility-years with any
+enforcement), so this is weak evidence that there is nothing, not strong evidence.
+
+### H2b: the pre-registered power follow-up (trial 2), also null
+
+Protocol `docs/PROTOCOL-H2b.md` (committed before computing; alpha 0.025 after
+Bonferroni over the 2 trials; 3 tests computed in total across both trials). Changes
+from H2-keyless: owner matching widened (prefix and spacing rules plus a public-name
+alias table, `owner_aliases.csv`), all NAICS instead of four, a denser primary outcome
+D (settlements plus EPA informal enforcement actions), same split, lag, placebo and
+rule. Reproduce: `python fetch_data.py`, `python run_h2b.py sample`, `python run_h2b.py test`.
+
+Sample: 6,176 located point emitters, 2,723 matched to a ticker (44.1%), 141 dropped at
+tile edges, 25 with no loss pixel in 10 km, leaving **2,557 facilities and 242
+companies**. Simulated power at that size: 81% for a within correlation of 0.06
+(trial 1 needed about 0.12).
+
+| outcome | beta | se | t | p | n obs | placebo p |
+|---|---|---|---|---|---|---|
+| D = settlements + informal actions (primary) | 0.00047 | 0.00043 | 1.09 | 0.274 | 3,146 | 0.944 |
+| settlements only (descriptive) | 0.00049 | 0.00042 | 1.16 | 0.246 | 3,146 | 0.943 |
+
+No edge: p = 0.274 is far above 0.025. The sign is now positive but it is within
+noise, and trial 1's was negative. The dense outcome turned out barely denser than
+settlements (1,241 versus 1,157 facility-years with an event out of about 61,000),
+so most of the power gain came from more companies. The forest filter removed almost
+nothing, so the sample includes many facilities with little forest nearby (landfills,
+power plants), which dilutes any real effect.
+
+**What would be needed to get power.** Not more of this data: it is a fixed public
+set, and a within correlation below about 0.06 is not detectable with 242 US
+companies. The next steps need things this repo cannot get keylessly: EOG VIIRS
+Nightfire flaring (H1, an account), a licensed ESG ratings export (an event-time
+outcome that is actually about ESG), and a firm-level returns source for the CAR
+route. Until one of those exists, the honest state is "no detectable lead of Hansen
+forest loss over EPA enforcement".
+
+**Coverage.** GHGRP point-emitter facilities in scope (NAICS 11, 21, 321, 322) with
+coordinates, an FRS id and an owner: 771. Owner matched to a listed ticker: 217
+(28.1%; exact-name matching, no fuzzy matches). Dropped for being within 10 km of a
+Hansen tile edge: 11. Used: 206 facilities, 39 companies. 4,408 ECHO conclusions
+have no settlement date and were dropped.
+
+**Data used** (URLs and sha256 in `fetch_data.py`): EPA GHGRP 2023 summary
+spreadsheets (28 MB) and parent-company file (8 MB), EPA ECHO case downloads (82 MB),
+all public domain; Hansen GFC-2024-v1.12 lossyear, 15 tiles for H2-keyless (631 MB), 22 for H2b (852 MB), CC BY 4.0;
+Nasdaq Trader symbol directory for tickers (SEC's `company_tickers.json` refuses
+requests without a real contact in the User-Agent).
+
+**Still blocked.** H1 flaring (needs an EOG account for Nightfire and a production
+denominator); anything against ESG ratings (needs a licensed export); a returns
+outcome (no legal keyless firm-level prices found); non-US facilities (the GEM
+trackers need a name/email form). The Sentinel-2 NDVI route is untested on real
+scenes. Other limits: 2023 ownership applied to all years; point-emitter coordinates
+are plant sites but not footprints; forest loss includes fire and logging.
+
+Also working (`pytest tests -q`, synthetic or fixture data): imagery, buffer and
+aggregation primitives; parsers for Nightfire CSV, Hansen tiles, SEC and Nasdaq
+ticker files, Ken French returns, ratings CSV, GHGRP/ECHO rows; `evaluate.py` is
+checked both ways (signal-free panels reject at about 5% over 300 simulated panels;
+a planted effect is found and its size recovered; the placebo stays null). The
+Nightfire column names and tracker column maps are from documentation and unverified.
+
+Research protocol for M5: fix the train/holdout split before looking, explore
+only before it, run `evaluate.confirmatory_test` once on the holdout, and
+count every signal/lag tried (correct for that count; the code does not).
+
+## Data you need to obtain
+
+Accounts are never created by this repo. Put credentials in a local `.env`
+(gitignored); the code reads them from environment variables.
+
+| Source | Needed for | What to do | Env vars |
+|---|---|---|---|
+| EOG VIIRS Nightfire | H1 flaring (M3) | Register a free account at https://eogdata.mines.edu/ , accept the terms, download the Nightfire CSV products (global nightly or monthly) | `EOG_USERNAME`, `EOG_PASSWORD` |
+| ESG ratings | M5 | Obtain a licensed export (MSCI/Sustainalytics/etc. via a university terminal or library) as CSV with columns `company,provider,date,rating`; no free equivalent is wired up | `ESG_RATINGS_CSV` (path to the file) |
+| Copernicus Data Space (optional) | Sentinel-2 | Not required: `sentinel.py` uses the keyless Planetary Computer. Only register at https://dataspace.copernicus.eu/ if you want that route instead | none read yet |
+| Global Energy Monitor trackers | M2 facilities | Free, but the download form asks for name and email; save the CSV locally | none |
+
+Keyless sources (no account): Hansen GFC tiles, EPA GHGRP and ECHO, Nasdaq
+symbol directory (all used by `fetch_data.py`); Ken French returns, Planetary
+Computer Sentinel-2 (not downloaded). The SEC ticker file needs a contact in the
+User-Agent.
 
 ## Repository guide
 
@@ -138,6 +242,13 @@ Scaffold. M1 in progress.
 | `geo.py` | Haversine distance, meters-per-degree, facility buffer masks |
 | `assets.py` | `Facility` schema and CSV loader with validation |
 | `esg_signal.py` | Weighted aggregation of facility signals to company-period |
+| `flaring.py`, `forest.py`, `sentinel.py` | Nightfire, Hansen and Sentinel-2 signals (M3/M4) |
+| `matching.py`, `returns.py`, `ratings.py` | Ticker matching, free returns, ratings parsing |
+| `epa.py`, `panel.py` | GHGRP/ECHO rows to facilities and enforcement counts; company x year matrices |
+| `fetch_data.py`, `run_h2.py`, `run_h2b.py`, `power_h2b.py` | Pinned downloads (URL + sha256), the one-shot H2-keyless and H2b runs, and the power simulation |
+| `docs/PROTOCOL-H2-keyless.md`, `docs/PROTOCOL-H2b.md` | Test definitions, fixed before the runs |
+| `evaluate.py`, `synth.py` | M5 test and the synthetic panels that validate it |
+| `loaders.py` | `MissingCredentials` and the env-var check |
 | `tests/` | Synthetic-data tests for all of the above |
 | `tests/fixtures/facilities.csv` | Three fictional example facilities |
 | `docs/DESIGN.md` | Pipeline diagram, Sentinel-2 band table, SCL class table |
@@ -152,9 +263,8 @@ pytest tests -q
 
 ## Notes
 
-- No network calls anywhere in this repo yet. `requirements-geo.txt` lists
-  what M2 onward will need, but nothing in `imagery.py`, `geo.py`, `assets.py`
-  or `esg_signal.py` imports a geo library at module level.
+- The only network call is `sentinel.find_scenes`; everything else takes text
+  or a local path. Geo libraries are imported lazily inside functions.
 - The buffer/distance math in `geo.py` uses a spherical-earth haversine
   distance rather than a real projection. That's fine at the scale of a
   facility buffer (sub-10km) relative to Sentinel-2's 10m pixels, and would

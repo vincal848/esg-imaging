@@ -1,8 +1,11 @@
 # Optional. Needed once this project actually fetches imagery rather than
 # operating on arrays it is handed (M2 onward). Nothing in imagery.py, geo.py,
-# assets.py or signal.py imports any of these at module level, and the test
+# assets.py or esg_signal.py imports any of these at module level, and the test
 # suite does not require them.
 
 rasterio>=1.3        # reading Sentinel-2 / VIIRS GeoTIFFs and clipping to a buffer
 pystac-client>=0.8   # querying the Microsoft Planetary Computer STAC catalog
 planetary-computer>=1.0  # signing Planetary Computer asset URLs
+
+openpyxl>=3.1        # GHGRP .xlsx tables (run_h2.py)
+pyxlsb>=1.0          # GHGRP parent-company .xlsb (run_h2.py)

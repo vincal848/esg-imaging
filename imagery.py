@@ -135,3 +135,23 @@ def seasonal_baseline(stack, doy, target_doy, window=15):
             "no images within %g days of day-of-year %g" % (window, target_doy))
 
     return np.nanmedian(stack[selected], axis=0)
+
+
+def buffer_loss_ha(ndvi_stack, doy, current, target_doy, buffer_mask,
+                   threshold, pixel_size_m, window=15):
+    """Hectares of NDVI loss inside a facility buffer on date `current`.
+
+    Composes the primitives above: the baseline is the seasonal median of every
+    image in `ndvi_stack` (T, H, W) *except* index `current`, compared against
+    `ndvi_stack[current]` with `ndvi_change`, then restricted to `buffer_mask`.
+    Cloud-masked pixels must already be nan in the stack, so they are never
+    counted as loss.
+    """
+    ndvi_stack = np.asarray(ndvi_stack, dtype=float)
+    others = np.arange(ndvi_stack.shape[0]) != current
+    baseline = seasonal_baseline(ndvi_stack[others], np.asarray(doy)[others],
+                                 target_doy, window)
+    loss_mask, _ = ndvi_change(baseline, ndvi_stack[current], threshold,
+                               pixel_size_m)
+    n_pixels = int(np.sum(loss_mask & np.asarray(buffer_mask, dtype=bool)))
+    return n_pixels * (float(pixel_size_m) ** 2) / 10000.0
