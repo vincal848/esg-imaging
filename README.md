@@ -90,7 +90,7 @@ them" is itself informative.
    summed instead of thresholded, since they're already discrete
    detections rather than a continuous field.
 5. **Aggregation.** Per-facility signals are combined to a company-period
-   observation with a weighted mean (`signal.aggregate_facility_signals`),
+   observation with a weighted mean (`esg_esg_signal.aggregate_facility_signals`),
    weighted by something that approximates facility importance (production
    capacity or acreage, once that data is attached -- equal weights for now).
 6. **Event study / panel regression.** Not built yet (M5). The plan is a

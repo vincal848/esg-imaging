@@ -53,3 +53,13 @@ def test_aggregate_facility_signals_raises_on_zero_total_weight():
     ]
     with pytest.raises(ValueError):
         esg_signal.aggregate_facility_signals(zero_weight_records)
+
+
+def test_aggregate_facility_signals_defaults_to_equal_weights():
+    records = [
+        {"company": "A", "period": "2024Q1", "value": 10.0},
+        {"company": "A", "period": "2024Q1", "value": 20.0},
+    ]
+    out = esg_signal.aggregate_facility_signals(records, weight_key=None)
+    assert out[("A", "2024Q1")]["value"] == pytest.approx(15.0)
+    assert out[("A", "2024Q1")]["weight_sum"] == pytest.approx(2.0)
