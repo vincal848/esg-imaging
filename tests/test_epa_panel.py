@@ -80,3 +80,19 @@ def test_pipeline_finds_a_planted_lead_and_nothing_in_noise():
         test, placebo = evaluate.confirmatory_test(xm, ym, split=2)
         assert (test.p < 0.01) == expect_hit
         assert placebo.p > 0.01
+
+
+def test_informal_counts_dedupe_and_skip_undated():
+    rows = [{"REGISTRY_ID": "9", "ENF_IDENTIFIER": "a", "ACHIEVED_DATE": "05/01/2015"},
+            {"REGISTRY_ID": "9", "ENF_IDENTIFIER": "a", "ACHIEVED_DATE": "05/01/2015"},
+            {"REGISTRY_ID": "9", "ENF_IDENTIFIER": "b", "ACHIEVED_DATE": "06/01/2015"},
+            {"REGISTRY_ID": "9", "ENF_IDENTIFIER": "c", "ACHIEVED_DATE": ""}]
+    assert epa.informal_counts(rows) == {("9", 2015): 2}
+
+
+def test_match_owner_exact_prefix_and_one_word_guard():
+    keys = matching.parse_nasdaq_tokens({"duke energy": "DUK", "williams": "WMB", "exxon mobil": "XOM"})
+    assert matching.match_owner("DUKE ENERGY CAROLINAS LLC", keys) == "DUK"  # subsidiary, 2+ words
+    assert matching.match_owner("EXXONMOBIL CORP", keys) == "XOM"  # spacing
+    assert matching.match_owner("WILLIAMS TRUCKING INC", keys) is None  # 1-word prefix refused
+    assert matching.match_owner("THE WILLIAMS COS INC", keys) == "WMB"  # exact after dropping the/cos

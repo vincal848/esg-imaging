@@ -34,20 +34,31 @@ def _sheet_rows(rows, header_at):
     return [dict(zip(head, r)) for r in it]
 
 
-def read_inputs():
+def read_ghgrp():
     with zipfile.ZipFile(os.path.join(RAW, "ghgrp.zip")) as z, z.open("ghgp_data_by_year_2023.xlsx") as f:
         ws = openpyxl.load_workbook(io.BytesIO(f.read()), read_only=True)["Direct Point Emitters"]
         coords = _sheet_rows(ws.iter_rows(values_only=True), 3)
     with open_workbook(os.path.join(RAW, "parent.xlsb")) as wb, wb.get_sheet("2023") as sh:
         parents = _sheet_rows(([c.v for c in r] for r in sh.rows()), 0)
+    return coords, parents
+
+
+def read_nasdaq(**kw):
     text = lambda n: open(os.path.join(RAW, n), encoding="latin1").read()
-    index = matching.parse_nasdaq_symbols(text("nasdaqlisted.txt"), text("otherlisted.txt"))
+    return matching.parse_nasdaq_symbols(text("nasdaqlisted.txt"), text("otherlisted.txt"), **kw)
+
+
+def read_echo(*names):
+    """The named ECHO case-download tables as lists of dicts."""
     with zipfile.ZipFile(os.path.join(RAW, "case.zip")) as z:
-        def table(name):
-            return list(csv.DictReader(io.TextIOWrapper(z.open(name), encoding="latin1")))
-        counts, no_date = epa.enforcement_counts(table("CASE_ENFORCEMENT_CONCLUSIONS.csv"),
-                                                 table("CASE_ENFORCEMENT_CONCLUSION_FACILITIES.csv"))
-    return coords, parents, index, counts, no_date
+        return [list(csv.DictReader(io.TextIOWrapper(z.open(n), encoding="latin1"))) for n in names]
+
+
+def read_inputs():
+    coords, parents = read_ghgrp()
+    counts, no_date = epa.enforcement_counts(*read_echo("CASE_ENFORCEMENT_CONCLUSIONS.csv",
+                                                        "CASE_ENFORCEMENT_CONCLUSION_FACILITIES.csv"))
+    return coords, parents, read_nasdaq(), counts, no_date
 
 
 def main() -> dict:

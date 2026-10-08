@@ -64,3 +64,13 @@ def enforcement_counts(conclusions: Iterable[dict], conclusion_facilities: Itera
     seen = {(f["ENF_CONCLUSION_ID"], f["FACILITY_UIN"]) for f in conclusion_facilities}
     counts = Counter((uin, year[cid]) for cid, uin in seen if cid in year)
     return counts, dropped
+
+
+def informal_counts(rows: Iterable[dict]) -> Counter:
+    """Counter {(registry id, year): distinct informal EPA enforcement actions}.
+
+    `rows`: ECHO EPA_INFORMAL_ENFORCEMENT_ACTIONS (notices of violation/noncompliance and
+    similar); year is ACHIEVED_DATE (MM/DD/YYYY); rows without a date are skipped."""
+    seen = {(r["REGISTRY_ID"], r["ENF_IDENTIFIER"], r["ACHIEVED_DATE"][-4:])
+            for r in rows if len(r["ACHIEVED_DATE"]) == 10}
+    return Counter((reg, int(y)) for reg, _, y in seen)
