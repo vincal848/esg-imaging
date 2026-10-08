@@ -101,17 +101,23 @@ them" is itself informative.
 ## Milestones
 
 - [x] **M1 -- imagery primitives on arrays.** NDVI, cloud masking, seasonal
-      baselines and change detection, tested on synthetic rasters. No
-      downloads. *This scaffold.*
-- [ ] **M2 -- facility table for one sector.** A real (not fictional)
-      facility list for one sector, sourced and matched to tickers, with
-      documented coverage gaps.
-- [ ] **M3 -- flaring signal for ~50 oil & gas firms.** VIIRS Nightfire pulled
-      and aggregated to company-quarter flaring intensity.
-- [ ] **M4 -- deforestation signal.** Sentinel-2 or Hansen GFC forest loss
-      aggregated to company-quarter for agriculture/mining/paper firms.
-- [ ] **M5 -- event study.** Lead/lag test of M3/M4 signals against rating
-      changes and returns; report the result whichever way it comes out.
+      baselines, change detection, buffer-level loss (`imagery.buffer_loss_ha`),
+      flare sums in a buffer, equal-weight aggregation; tested on synthetic
+      rasters. No downloads.
+- [~] **M2 -- facility table for one sector.** Code done: tracker column
+      mapping (`assets.load_facilities(columns=...)`), SEC ticker matching and
+      coverage (`matching.py`). Not done: the real facility file has not been
+      downloaded or matched.
+- [~] **M3 -- flaring signal for ~50 oil & gas firms.** Code done:
+      Nightfire CSV parsing, buffer sums, intensity (`flaring.py`). Blocked on
+      an EOG account and on a production denominator (open question).
+- [~] **M4 -- deforestation signal.** Code done: Hansen tile naming/URLs,
+      windowed read, excess loss vs a surrounding ring (`forest.py`), Sentinel-2
+      search parameters (`sentinel.py`). Not run on real tiles yet.
+- [~] **M5 -- event study.** Code done and validated on synthetic data:
+      two-way fixed-effects lead/lag test with company-clustered errors,
+      shuffled placebo, market-model CAR (`evaluate.py`). No real result exists;
+      needs ratings (`ratings.py`) and the signals above.
 
 ## Success metrics
 
@@ -128,7 +134,43 @@ them" is itself informative.
 
 ## Status
 
-Scaffold. M1 in progress.
+M1 complete. M2-M5 have tested code but no real data has been downloaded, so
+**there is no empirical result yet** -- not even a null.
+
+What runs today (`pytest tests -q`, all on synthetic or fixture data):
+
+- Imagery, buffer and aggregation primitives (M1).
+- Parsers for the real file formats: Nightfire CSV, Hansen GeoTIFF tiles,
+  SEC ticker JSON, Ken French return files, ratings CSV. The Nightfire column
+  names and tracker column maps are from documentation and unverified against
+  a real file.
+- The evaluation (`evaluate.py`) is checked both ways: on signal-free panels
+  it rejects at about the nominal 5% rate (300 simulated panels), and with a
+  planted effect it finds it (and recovers its size). Its placebo, which
+  shuffles signals across companies, stays null when a real effect is planted.
+- Returns are only available as industry portfolios (Ken French), not
+  per-stock, so the return side of H2 is industry-level until a stock price
+  source is chosen.
+
+Research protocol for M5: fix the train/holdout split before looking, explore
+only before it, run `evaluate.confirmatory_test` once on the holdout, and
+count every signal/lag tried (correct for that count; the code does not).
+
+## Data you need to obtain
+
+Accounts are never created by this repo. Put credentials in a local `.env`
+(gitignored); the code reads them from environment variables.
+
+| Source | Needed for | What to do | Env vars |
+|---|---|---|---|
+| EOG VIIRS Nightfire | H1 flaring (M3) | Register a free account at https://eogdata.mines.edu/ , accept the terms, download the Nightfire CSV products (global nightly or monthly) | `EOG_USERNAME`, `EOG_PASSWORD` |
+| ESG ratings | M5 | Obtain a licensed export (MSCI/Sustainalytics/etc. via a university terminal or library) as CSV with columns `company,provider,date,rating`; no free equivalent is wired up | `ESG_RATINGS_CSV` (path to the file) |
+| Copernicus Data Space (optional) | Sentinel-2 | Not required: `sentinel.py` uses the keyless Planetary Computer. Only register at https://dataspace.copernicus.eu/ if you want that route instead | none read yet |
+| Global Energy Monitor trackers | M2 facilities | Free, but the download form asks for name and email; save the CSV locally | none |
+
+Keyless sources (no account): Hansen GFC tiles, SEC ticker file, EPA GHGRP
+spreadsheets, Ken French returns, Planetary Computer Sentinel-2. URLs and
+sizes are in the hand-off notes, not downloaded yet.
 
 ## Repository guide
 
@@ -138,6 +180,10 @@ Scaffold. M1 in progress.
 | `geo.py` | Haversine distance, meters-per-degree, facility buffer masks |
 | `assets.py` | `Facility` schema and CSV loader with validation |
 | `esg_signal.py` | Weighted aggregation of facility signals to company-period |
+| `flaring.py`, `forest.py`, `sentinel.py` | Nightfire, Hansen and Sentinel-2 signals (M3/M4) |
+| `matching.py`, `returns.py`, `ratings.py` | Ticker matching, free returns, ratings parsing |
+| `evaluate.py`, `synth.py` | M5 test and the synthetic panels that validate it |
+| `loaders.py` | `MissingCredentials` and the env-var check |
 | `tests/` | Synthetic-data tests for all of the above |
 | `tests/fixtures/facilities.csv` | Three fictional example facilities |
 | `docs/DESIGN.md` | Pipeline diagram, Sentinel-2 band table, SCL class table |
@@ -152,9 +198,8 @@ pytest tests -q
 
 ## Notes
 
-- No network calls anywhere in this repo yet. `requirements-geo.txt` lists
-  what M2 onward will need, but nothing in `imagery.py`, `geo.py`, `assets.py`
-  or `esg_signal.py` imports a geo library at module level.
+- The only network call is `sentinel.find_scenes`; everything else takes text
+  or a local path. Geo libraries are imported lazily inside functions.
 - The buffer/distance math in `geo.py` uses a spherical-earth haversine
   distance rather than a real projection. That's fine at the scale of a
   facility buffer (sub-10km) relative to Sentinel-2's 10m pixels, and would
