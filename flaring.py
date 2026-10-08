@@ -34,12 +34,12 @@ class Detections:
     period: np.ndarray  # 'YYYYQn' strings
 
 
-def quarter_of(iso_date):
+def quarter_of(iso_date: str) -> str:
     year, month = int(iso_date[0:4]), int(iso_date[5:7])
     return "%dQ%d" % (year, (month - 1) // 3 + 1)
 
 
-def parse_nightfire_csv(text, columns=None):
+def parse_nightfire_csv(text: str, columns: dict[str, str] | None = None) -> Detections:
     cols = {**DEFAULT_COLUMNS, **(columns or {})}
     reader = csv.DictReader(io.StringIO(text))
     missing = [c for c in cols.values() if c not in (reader.fieldnames or [])]
@@ -54,7 +54,8 @@ def parse_nightfire_csv(text, columns=None):
     return Detections(np.array(lat), np.array(lon), np.array(rh), np.array(period))
 
 
-def flare_in_buffer(det, facility_lat, facility_lon, radius_km):
+def flare_in_buffer(det: Detections, facility_lat: float, facility_lon: float,
+                    radius_km: float) -> dict[str, float]:
     """Sum of radiant heat per quarter for detections within `radius_km`."""
     inside = geo.haversine_km(det.lat, det.lon, facility_lat, facility_lon) <= radius_km
     out = {}
@@ -63,13 +64,14 @@ def flare_in_buffer(det, facility_lat, facility_lon, radius_km):
     return out
 
 
-def flaring_intensity(flare, production):
+def flaring_intensity(flare: dict[tuple[str, str], float],
+                      production: dict[tuple[str, str], float]) -> dict[tuple[str, str], float]:
     """Flare / production per (company, period). Zero or missing production is
     skipped: intensity there is undefined, not zero."""
     return {k: v / production[k] for k, v in flare.items()
             if production.get(k, 0) > 0}
 
 
-def eog_credentials():
+def eog_credentials() -> tuple[str, ...]:
     """(username, password) for the EOG Nightfire download, from env."""
     return require_env("EOG_USERNAME", "EOG_PASSWORD")
