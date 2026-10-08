@@ -136,7 +136,7 @@ them" is itself informative.
 
 M1 complete. One real-data run exists: **H2-keyless**, a forest-loss test against
 EPA enforcement (not ratings, not returns). It is null. Protocol, written before the
-run: `docs/PROTOCOL-H2-keyless.md`. Reproduce: `python fetch_data.py` (about 700 MB
+run: `docs/PROTOCOL-H2-keyless.md`. Reproduce: `python fetch_data.py` (about 1 GB
 into the gitignored `data/raw`), then `python run_h2.py`.
 
 **What was tested.** Does excess Hansen forest loss (2 km around a GHGRP facility minus
@@ -153,6 +153,40 @@ No edge: the sign is wrong and the effect is indistinguishable from zero; the pl
 is null as required. Power is low (39 companies, 64 facility-years with any
 enforcement), so this is weak evidence that there is nothing, not strong evidence.
 
+### H2b: the pre-registered power follow-up (trial 2), also null
+
+Protocol `docs/PROTOCOL-H2b.md` (committed before computing; alpha 0.025 after
+Bonferroni over the 2 trials; 3 tests computed in total across both trials). Changes
+from H2-keyless: owner matching widened (prefix and spacing rules plus a public-name
+alias table, `owner_aliases.csv`), all NAICS instead of four, a denser primary outcome
+D (settlements plus EPA informal enforcement actions), same split, lag, placebo and
+rule. Reproduce: `python fetch_data.py`, `python run_h2b.py sample`, `python run_h2b.py test`.
+
+Sample: 6,176 located point emitters, 2,723 matched to a ticker (44.1%), 141 dropped at
+tile edges, 25 with no loss pixel in 10 km, leaving **2,557 facilities and 242
+companies**. Simulated power at that size: 81% for a within correlation of 0.06
+(trial 1 needed about 0.12).
+
+| outcome | beta | se | t | p | n obs | placebo p |
+|---|---|---|---|---|---|---|
+| D = settlements + informal actions (primary) | 0.00047 | 0.00043 | 1.09 | 0.274 | 3,146 | 0.944 |
+| settlements only (descriptive) | 0.00049 | 0.00042 | 1.16 | 0.246 | 3,146 | 0.943 |
+
+No edge: p = 0.274 is far above 0.025. The sign is now positive but it is within
+noise, and trial 1's was negative. The dense outcome turned out barely denser than
+settlements (1,241 versus 1,157 facility-years with an event out of about 61,000),
+so most of the power gain came from more companies. The forest filter removed almost
+nothing, so the sample includes many facilities with little forest nearby (landfills,
+power plants), which dilutes any real effect.
+
+**What would be needed to get power.** Not more of this data: it is a fixed public
+set, and a within correlation below about 0.06 is not detectable with 242 US
+companies. The next steps need things this repo cannot get keylessly: EOG VIIRS
+Nightfire flaring (H1, an account), a licensed ESG ratings export (an event-time
+outcome that is actually about ESG), and a firm-level returns source for the CAR
+route. Until one of those exists, the honest state is "no detectable lead of Hansen
+forest loss over EPA enforcement".
+
 **Coverage.** GHGRP point-emitter facilities in scope (NAICS 11, 21, 321, 322) with
 coordinates, an FRS id and an owner: 771. Owner matched to a listed ticker: 217
 (28.1%; exact-name matching, no fuzzy matches). Dropped for being within 10 km of a
@@ -161,7 +195,7 @@ have no settlement date and were dropped.
 
 **Data used** (URLs and sha256 in `fetch_data.py`): EPA GHGRP 2023 summary
 spreadsheets (28 MB) and parent-company file (8 MB), EPA ECHO case downloads (82 MB),
-all public domain; Hansen GFC-2024-v1.12 lossyear, 15 tiles (631 MB, CC BY 4.0);
+all public domain; Hansen GFC-2024-v1.12 lossyear, 15 tiles for H2-keyless (631 MB), 22 for H2b (852 MB), CC BY 4.0;
 Nasdaq Trader symbol directory for tickers (SEC's `company_tickers.json` refuses
 requests without a real contact in the User-Agent).
 
@@ -211,8 +245,8 @@ User-Agent.
 | `flaring.py`, `forest.py`, `sentinel.py` | Nightfire, Hansen and Sentinel-2 signals (M3/M4) |
 | `matching.py`, `returns.py`, `ratings.py` | Ticker matching, free returns, ratings parsing |
 | `epa.py`, `panel.py` | GHGRP/ECHO rows to facilities and enforcement counts; company x year matrices |
-| `fetch_data.py`, `run_h2.py` | Pinned downloads (URL + sha256) and the one-shot H2-keyless run |
-| `docs/PROTOCOL-H2-keyless.md` | Test definition, fixed before the run |
+| `fetch_data.py`, `run_h2.py`, `run_h2b.py`, `power_h2b.py` | Pinned downloads (URL + sha256), the one-shot H2-keyless and H2b runs, and the power simulation |
+| `docs/PROTOCOL-H2-keyless.md`, `docs/PROTOCOL-H2b.md` | Test definitions, fixed before the runs |
 | `evaluate.py`, `synth.py` | M5 test and the synthetic panels that validate it |
 | `loaders.py` | `MissingCredentials` and the env-var check |
 | `tests/` | Synthetic-data tests for all of the above |
