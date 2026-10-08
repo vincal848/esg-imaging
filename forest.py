@@ -28,6 +28,15 @@ def tile_id(lat: float, lon: float) -> str:
                               abs(left), "E" if left >= 0 else "W")
 
 
+def near_tile_edge(lat: float, lon: float, km: float) -> bool:
+    """True if the point is within `km` of its 10-degree tile's border, where a window
+    of that radius would be clipped (see read_loss_window)."""
+    m_lat, m_lon = geo.meters_per_degree(lat)
+    d_lat = min(lat % 10.0, 10.0 - lat % 10.0) * m_lat / 1000.0
+    d_lon = min(lon % 10.0, 10.0 - lon % 10.0) * m_lon / 1000.0
+    return min(d_lat, d_lon) < km
+
+
 def tile_url(lat: float, lon: float, layer: str = "lossyear") -> str:
     return "%s/Hansen_%s_%s_%s.tif" % (BASE_URL, VERSION, layer, tile_id(lat, lon))
 

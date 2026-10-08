@@ -25,6 +25,12 @@ def test_tile_url_matches_the_published_pattern():
         "GFC-2024-v1.12/Hansen_GFC-2024-v1.12_lossyear_50N_080W.tif")
 
 
+def test_near_tile_edge_flags_points_whose_window_would_be_clipped():
+    assert forest.near_tile_edge(40.05, -95.0, 10)  # 5.6 km above the 40N border
+    assert forest.near_tile_edge(45.0, -90.05, 10)  # 3.9 km east of the 90W border
+    assert not forest.near_tile_edge(45.0, -95.0, 10)
+
+
 def _window(inner_loss_frac, ring_loss_frac, seed=0):
     rng = np.random.default_rng(seed)
     d = np.arange(-100, 101) * 0.001
