@@ -27,6 +27,24 @@ def parse_sec_tickers(text: str) -> dict[str, str]:
     return out
 
 
+def parse_nasdaq_symbols(*texts: str) -> dict[str, str]:
+    """{normalised company name: ticker} from Nasdaq Trader's `nasdaqlisted.txt` and
+    `otherlisted.txt` (pipe-delimited, no account). ETFs and test issues are skipped;
+    share-class text after the company name is cut. Keyless stand-in for the SEC file."""
+    out: dict[str, str] = {}
+    for text in texts:
+        rows = [ln.split("|") for ln in text.splitlines()]
+        head = rows[0]
+        sym = head.index("Symbol") if "Symbol" in head else head.index("ACT Symbol")
+        etf, test = head.index("ETF"), head.index("Test Issue")
+        for r in rows[1:]:
+            if len(r) < len(head) or r[etf] == "Y" or r[test] == "Y":
+                continue  # also drops the trailing "File Creation Time" line
+            name = re.split(r" - | Common Stock| Ordinary Shares| Class [A-Z]| Depositary", r[1])[0]
+            out.setdefault(normalize(name), r[sym])
+    return out
+
+
 def match_tickers(facilities: list[Facility], index: dict[str, str]) -> dict[str, str | None]:
     """{company: ticker or None} for every distinct company in `facilities`."""
     return {f.company: index.get(normalize(f.company)) for f in facilities}
