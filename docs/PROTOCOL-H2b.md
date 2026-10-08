@@ -72,3 +72,35 @@ The honest end state is "no detectable lead of Hansen forest loss over EPA
 enforcement with the keyless data available". More power needs data the repo cannot
 get without an account or licence: EOG VIIRS Nightfire flaring (H1), a licensed
 ESG ratings export, and a firm-level returns source.
+
+## Pre-run sample and power (appended before the test was run; no outcome read)
+
+`python run_h2b.py sample` (reads only GHGRP, owner names, Hansen tiles):
+
+| | n |
+|---|---|
+| in-scope located GHGRP point emitters, any NAICS | 6,176 |
+| owner matched to a ticker (44.1%) | 2,723 |
+| tiles needed (budget 40) | 22 (631 MB + 221 MB; 7 added to `fetch_data.py`) |
+| excluded: within 10 km of a tile edge | 141 |
+| excluded: no Hansen loss pixel in 10 km | 25 |
+| **facilities used** | **2,557** |
+| **companies (tickers)** | **242** (trial 1: 39) |
+
+The forest filter removed only 25 facilities: almost every 10 km window contains some
+loss pixel, so the sample is effectively "all matched US point emitters" and includes
+many non-forest facilities (landfills, power plants), which dilutes any real effect.
+
+Power (`python power_h2b.py G`, 300 simulations per cell, 14 periods, lag 1,
+alpha 0.025, normal approximation as in evaluate.py; rho = within correlation of
+y[t] with x[t-1], in SD units, with company and period effects):
+
+| rho | 0.02 | 0.04 | 0.06 | 0.08 | 0.10 | 0.15 |
+|---|---|---|---|---|---|---|
+| power, G = 39 (trial 1) | 0.03 | 0.09 | 0.18 | 0.32 | 0.50 | 0.84 |
+| power, G = 242 (H2b) | 0.10 | 0.45 | 0.81 | 0.97 | 1.00 | 1.00 |
+
+Size at rho = 0 (varies by seed): about 0.02-0.04 for G = 242 and 0.00-0.08 for
+G = 39, against a nominal 0.025. Minimum detectable effect at 80% power: rho of about
+0.06 for H2b, about 0.12 for trial 1. These are upper bounds on real power: D is a
+zero-inflated count and the simulation uses Gaussian noise.

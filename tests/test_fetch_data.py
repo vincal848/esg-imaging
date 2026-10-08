@@ -24,4 +24,4 @@ def test_checksum_mismatch_policy(tmp_path, monkeypatch, capsys):
 
 
 def test_every_hansen_tile_is_pinned():
-    assert len(fetch_data.TILES) == 15 and all(len(h) == 64 for h in fetch_data.TILES.values())
+    assert len(fetch_data.TILES) == 22 and all(len(h) == 64 for h in fetch_data.TILES.values())
